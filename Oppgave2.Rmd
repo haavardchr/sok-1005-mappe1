@@ -1,0 +1,65 @@
+---
+title: "Oppgave2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(jsonlite)
+library(ggrepel)
+```
+
+## Oppgave 1
+
+Først så hentes data fra JSON filen inn. Denne lagres som en variabel.
+
+```{r}
+covid <- fromJSON("https://static01.nyt.com/newsgraphics/2021/12/20/us-coronavirus-deaths-2021/ff0adde21623e111d8ce103fedecf7ffc7906264/scatter.json")
+```
+
+Deretter ender jeg tabellen slik at navnet på statene blir omgjort til forkortelser.
+
+```{r}
+covid$name <- state.abb[match(covid$name, state.name)]
+covid[is.na(covid)] <- "DC"
+```
+
+Plotter for verdiene vaksinert på x-aksen og dødelighet på y-aksen
+
+```{r}
+covid %>%
+  ggplot(aes(x=fully_vaccinated_pct_of_pop, y=deaths_per_100k, label = name)) +
+  geom_point(size = 2, shape = 20, col="green", fill = "lightgreen") +
+  geom_text_repel(aes(label = name), 
+                      box.padding = unit(0.6, "lines")) +
+  scale_x_continuous(labels = scales::percent, limits=c(0.45, 0.80), breaks=seq(0.45, 0.80, by = 0.05)) +
+  labs(title="Covid-19 deaths since universal adult vaccine eligibility compared with vaccination rates",
+       x ="Share of total population fully vaccinated",
+       y = "20 avg. Monthly deaths per 100,000") +
+  theme_bw()
+```
+Her endres veridene på x-aksen til prosent, statnavnene refererer til plottene de hører sammen med. Grafen har også samme titel og aksenavn som originalen. 
+
+## Oppgave 2
+
+Bruker lm() funksjonen for å lage en lineær regresjonsmoddel på grafen.
+
+```{r}
+lm(deaths_per_100k ~ fully_vaccinated_pct_of_pop, data = covid)
+
+covid %>%
+  ggplot(aes(x=fully_vaccinated_pct_of_pop, y=deaths_per_100k, label = name)) +
+  geom_point(size = 2, shape = 20, col="green", fill = "lightgreen") +
+  geom_text_repel(aes(label = name), 
+                  box.padding = unit(0.6, "lines")) +
+  geom_smooth(method = lm) +
+  scale_x_continuous(labels = scales::percent, limits=c(0.45, 0.80), breaks=seq(0.45, 0.80, by = 0.05)) +
+  labs(title="Covid-19 deaths since universal adult vaccine eligibility compared with vaccination rates",
+       x ="Share of total population fully vaccinated",
+       y = "20 avg. Monthly deaths per 100,000") +
+  theme_bw()
+```
+Den lineære regresjonsmodellen viser trenden på covid-dødsfall i USA. I stater med høyere vaksinedekning er det en reduksjon i antall døde, samtidig som at stater med lavere vaksinedekning har flere dødsfall. Antall døde er registrert per 100 000 innbyggere, noe som betyr at befolkningsforkskjellene på tvers av statene ikke er av betydning, og gir et bedre av bilde. 
+
+Grafen tar derimot ikke betrakning i andel av befolkningen som har motatt en vaksinedose. Forskning tyder på at det å motta en dose gir økt beskytttelse med covid-19, men anbefalingene er to doser. Grafen tar kun betrakning i andel av befolkningen som er fullvaksinert. 
